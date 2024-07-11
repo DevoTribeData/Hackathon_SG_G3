@@ -1,3 +1,6 @@
+import json
+import urllib.request
+
 from azure.communication.callautomation.aio import CallAutomationClient
 from helpers.call_utils import ContextEnum as CallContextEnum, handle_play_text
 from helpers.config import CONFIG
@@ -282,6 +285,104 @@ class LlmPlugins:
         except ValidationError as e:  # Catch error to inform LLM and rollback changes
             self.call.claim[field] = old_value
             return f'Failed to edit field "{field}": {e.json()}'
+
+    async def get_user_info(self) -> str:
+        """
+        Use this if the customer wants to get information about his account.
+
+        # Behavior
+        1. Return information about the user banking account
+        2. The Assistant will use this information to answer future questions of the User
+
+        # Rules
+        - Requires an explicit verbal validation from the customer
+        - Never use this action directly after a recall
+
+        # Usage examples
+        - Customer wants to get information about his credit card
+        - Customer wants to get information about his payment capacities
+        - Customer wants to get information about his bank account balance
+        """
+
+        txt_plafond = "Voici un Json concerrnant les plafonds et la carte banquaire de l'utilisateur"
+        txt_solde = "Voici un Json concernant le solde banquaire de l'utilisateur"
+
+        user_id = 1
+        url_solde = f"https://api-func-g3.azurewebsites.net/api/api_solde?code=pbq9Ri2pNlfyRwk70gKsAWJf1soEVJqG675z-69aq6F9AzFu_RF5AQ%3D%3D&user_id={user_id}"
+        url_plafond = f"https://api-func-g3.azurewebsites.net/api/api_plafond?code=yxBhLawagQbuYybaGLG1yvRBvJFGn65I0Xlm9uZfMELkAzFu1Yi6Zw%3D%3D&user_id={user_id}"
+
+        with urllib.request.urlopen(url_plafond) as url:
+            txt_plafond += json.dumps(json.load(url))
+        
+        with urllib.request.urlopen(url_solde) as url:
+            txt_solde += json.dumps(json.load(url))
+
+        txt_return = f"{txt_plafond} {txt_solde}"
+        logger.error(txt_solde)
+        logger.error(txt_plafond)
+        logger.error(txt_return)
+
+        return f"{txt_plafond} {txt_solde}"
+        
+        # return json.dumps(""" Voici un Json concernant les plafonds de l'utilisateur :
+        # {
+        #     "commun": {"statut": "OK", "raison": "null", "action": "null", "origine": "gkb"},
+        #     "donnees": {
+        #         "credit_cart": {
+        #             "credit_card_type": "Mastercard",
+        #             "credit_card_offering": "GOLD",
+        #             "credit_card_number": "4000 5678 5678 5678",
+        #         },
+        #         "montantCapacitePaiement": {
+        #             "valeurMontant": 2600,
+        #             "formattedValeurMontant": "2 600,00",
+        #             "devise": {"id": "EUR", "symbole": "\u20ac"},
+        #         },
+        #         "dateFinCapacitePaiement": "12/02/2024",
+        #         "montantCapaciteRetrait": {
+        #             "valeurMontant": 1300,
+        #             "formattedValeurMontant": "1300,00",
+        #             "devise": {"id": "EUR", "symbole": "\u20ac"},
+        #         },
+        #         "dateFinCapaciteRetrait": "null",
+        #         "montantAutorisationRetraitSG": {
+        #             "valeurMontant": 1500,
+        #             "formattedValeurMontant": "1500,00",
+        #             "devise": {"id": "EUR", "symbole": "\u20ac"},
+        #         },
+        #         "montantRetraitEtranger": {
+        #             "valeurMontant": 1300,
+        #             "formattedValeurMontant": "1300,00",
+        #             "devise": {"id": "EUR", "symbole": "\u20ac"},
+        #         },
+        #         "montantRetraitInterBancaire": {
+        #             "valeurMontant": 1300,
+        #             "formattedValeurMontant": "1300,00",
+        #             "devise": {"id": "EUR", "symbole": "\u20ac"},
+        #         },
+        #         "montantRestantEncoursPlafondPaiement": {
+        #             "valeurMontant": 2223.03,
+        #             "formattedValeurMontant": "2 223,03",
+        #             "devise": {"id": "EUR", "symbole": "\u20ac"},
+        #         },
+        #         "montantEncoursPlafondPaiement": {
+        #             "valeurMontant": 1376.97,
+        #             "formattedValeurMontant": "1 376,97",
+        #             "devise": {"id": "EUR", "symbole": "\u20ac"},
+        #         },
+        #         "pourcentageRestantAConsommerPaiement": 12,
+        #         "capacitePaiementExceptionnel": "false",
+        #         "capaciteRetraitExceptionnel": "false",
+        #     },
+        #     "caract": {
+        #         "chiffrement": "false",
+        #         "compression": "false",
+        #         "must_recheck": 0,
+        #         "delai_val": 0,
+        #         "id_cle": "null",
+        #     },
+        # }
+        # """)
 
     async def talk_to_human(self) -> str:
         """
